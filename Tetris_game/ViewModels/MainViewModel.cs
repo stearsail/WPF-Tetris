@@ -365,8 +365,12 @@ namespace Tetris_game.ViewModels
                     {
                         int i = pos.Row + ActiveBlock.Offset.Row;
                         int j = pos.Column + ActiveBlock.Offset.Column;
-                        if (j+collisions>9 || OccupiedCells[i][j+collisions].Item1)
+                        if (j+collisions>9 || OccupiedCells[i][j + collisions].Item1)
+                        {
+                            TryMoveUp(CW);
                             return;
+                        }
+
                     }
                     SavePreviousPosition();
                     ActiveBlock.Offset.Column += collisions;
@@ -380,7 +384,10 @@ namespace Tetris_game.ViewModels
                         int i = pos.Row + ActiveBlock.Offset.Row;
                         int j = pos.Column + ActiveBlock.Offset.Column;
                         if (j-collisions<0 || OccupiedCells[i][j - collisions].Item1)
+                        {
+                            TryMoveUp(CW);
                             return;
+                        }      
                     }
                     SavePreviousPosition();
                     ActiveBlock.Offset.Column -= collisions;
@@ -389,6 +396,36 @@ namespace Tetris_game.ViewModels
                 }
 
             }
+        }
+        private void TryMoveUp(bool CW)
+        {
+            int max = 2;
+            int current = 1;
+            bool fitsUp = true;
+            while (current <= max)
+            {
+                fitsUp = true;
+                foreach (Position pos in ActiveBlock.PossiblePositions[GetRotationIndex(CW)])
+                {
+                    int i = pos.Row + ActiveBlock.Offset.Row;
+                    int j = pos.Column + ActiveBlock.Offset.Column;
+                    if (OccupiedCells[i - current][j].Item1)
+                    {
+                        fitsUp = false;
+                        break;
+                    }
+                }
+                if (fitsUp) break;
+                current++;
+            }
+            if (fitsUp)
+            {
+                SavePreviousPosition();
+                ActiveBlock.Offset.Row -= current;
+                SavePreviousPosition();
+                ActiveBlock.CurrentPosition = GetRotationIndex(CW);
+            }
+
         }
 
         private void HoldBlock()
