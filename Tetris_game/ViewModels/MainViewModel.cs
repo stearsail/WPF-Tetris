@@ -17,6 +17,7 @@ namespace Tetris_game.ViewModels
     {
         private Models.Block activeBlock;
         private Models.Block heldBlock;
+        private Models.Block nextBlock;
         private BlockQueue blockQueue = new BlockQueue();
         private ObservableCollection<ObservableCollection<(bool, Color)>> occupiedCells;
         private bool isRunning = false;
@@ -55,6 +56,16 @@ namespace Tetris_game.ViewModels
             set
             {
                 heldBlock = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public Models.Block NextBlock
+        {
+            get => nextBlock;
+            set
+            {
+                nextBlock = value;
                 OnPropertyChanged();
             }
         }
@@ -212,6 +223,10 @@ namespace Tetris_game.ViewModels
                 TryFitRotation(true);
                 return;
             }
+            else
+            {
+                
+            }
             SavePreviousPosition();
             ActiveBlock.CurrentPosition = GetRotationIndex(true);
         }
@@ -268,6 +283,7 @@ namespace Tetris_game.ViewModels
         {
             int maxColumn = 9;
             int minColumn = 0;
+            int maxRow = 21;
             int off = 0;
             foreach(Position pos in ActiveBlock.PossiblePositions[GetRotationIndex(CW)])
             { 
@@ -275,6 +291,7 @@ namespace Tetris_game.ViewModels
                 int j = pos.Column + ActiveBlock.Offset.Column;
                 maxColumn = Math.Max(j, maxColumn);
                 minColumn = Math.Min(j, minColumn);
+                maxRow = Math.Max(i, maxRow);
             }
             if (maxColumn != 9)
             {
@@ -306,10 +323,25 @@ namespace Tetris_game.ViewModels
                 SavePreviousPosition();
                 ActiveBlock.CurrentPosition = GetRotationIndex(CW);
             }
+            else if (maxRow != 21)
+            {
+                off = maxRow - 21;
+                foreach (Position p in ActiveBlock.PossiblePositions[GetRotationIndex(CW)])
+                {
+                    int i = p.Row + ActiveBlock.Offset.Row;
+                    int j = p.Column + ActiveBlock.Offset.Column;
+                    if (OccupiedCells[i-off][j].Item1)
+                        return;
+                }
+                SavePreviousPosition();
+                ActiveBlock.Offset.Row -= off;
+                SavePreviousPosition();
+                ActiveBlock.CurrentPosition = GetRotationIndex(CW);
+            }
             else
             {
                 int collisions = 0;
-                int medianColumn = 0;
+                double medianColumn = 0;
                 HashSet<int> collidedColumns = new HashSet<int>();
 
                 foreach(Position pos in ActiveBlock.PossiblePositions[GetRotationIndex(CW)])
@@ -362,14 +394,22 @@ namespace Tetris_game.ViewModels
         private void HoldBlock()
         {
             Models.Block newBlock = null;
-            if (HeldBlock == null)
-                newBlock = blockQueue.GenerateBlock();
-            else
-                newBlock = HeldBlock;
             SavePreviousPosition();
-            newBlock.PreviousPosition = ActiveBlock.PreviousPosition;
-            HeldBlock = ActiveBlock;
-            ActiveBlock = newBlock;
+            if (HeldBlock == null)
+            {
+                HeldBlock = ActiveBlock;
+                newBlock = blockQueue.GenerateBlock();
+                newBlock.PreviousPosition = ActiveBlock.PreviousPosition;
+                ActiveBlock = newBlock;
+                NextBlock = blockQueue.NextBlock;
+            }
+            else
+            {
+                newBlock = HeldBlock;
+                HeldBlock = ActiveBlock;
+                newBlock.PreviousPosition = ActiveBlock.PreviousPosition;
+                ActiveBlock = newBlock;
+            }
             HeldBlock.ResetPositions();
         }
 
@@ -381,6 +421,7 @@ namespace Tetris_game.ViewModels
                 OccupiedCells[position.Row + ActiveBlock.Offset.Row][position.Column + ActiveBlock.Offset.Column] = (true,ActiveBlock.Color.Color);
             }
             ActiveBlock = blockQueue.GenerateBlock();
+            NextBlock = blockQueue.NextBlock;
             CheckClearRows();
         }
 
@@ -436,6 +477,7 @@ namespace Tetris_game.ViewModels
         {
             isRunning = true;
             ActiveBlock = blockQueue.CurrentBlock;
+            NextBlock = blockQueue.NextBlock;
             while (isRunning)
             {
                 await Task.Delay(400);

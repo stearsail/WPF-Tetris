@@ -62,6 +62,16 @@
             Background="Transparent"
             HeldBlock="{Binding HeldBlock, UpdateSourceTrigger=PropertyChanged}"/>
         </Viewbox>
+        <Viewbox Grid.Column="2"
+                 Height="{Binding ElementName=GameGridViewbox, Path=ActualHeight, Converter={StaticResource HeightConverterKey}}"
+                 Width="{Binding ElementName=GameGridViewbox, Path=ActualWidth, Converter={StaticResource WidthConverterKey}}">
+            <controls:NextGrid
+            Height="50"
+            Width="100"
+            ShowGridLines="False"
+            Background="Transparent"
+            NextBlock="{Binding NextBlock, UpdateSourceTrigger=PropertyChanged}"/>
+        </Viewbox>
         <Grid Grid.Column="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
