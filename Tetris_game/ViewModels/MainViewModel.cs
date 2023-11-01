@@ -5,10 +5,13 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Media3D;
+using System.Windows.Shapes;
 using Tetris_game.Models;
 
 namespace Tetris_game.ViewModels
@@ -152,7 +155,7 @@ namespace Tetris_game.ViewModels
             {
                 if(holdBlockCommand == null)
                 {
-                    holdBlockCommand = new RelayCommand(_ => HoldBlock(), _ => isRunning);
+                    holdBlockCommand = new RelayCommand(_ => HoldBlock(), _ => isRunning && canHoldBlock);
                 }
                 return holdBlockCommand;
             }
@@ -447,6 +450,7 @@ namespace Tetris_game.ViewModels
                 newBlock.PreviousPosition = ActiveBlock.PreviousPosition;
                 ActiveBlock = newBlock;
             }
+            canHoldBlock = false;
             HeldBlock.ResetPositions();
         }
 
@@ -459,6 +463,7 @@ namespace Tetris_game.ViewModels
             }
             ActiveBlock = blockQueue.GenerateBlock();
             NextBlock = blockQueue.NextBlock;
+            canHoldBlock = true;
             CheckClearRows();
         }
 
@@ -475,12 +480,12 @@ namespace Tetris_game.ViewModels
                 }
                 Occupado.Add(newRow);
             }
-            ObservableCollection<(bool, Color)> EmptyRow = new ObservableCollection<(bool, Color)>();
+            ObservableCollection<(bool, Color)> emptyRow = new ObservableCollection<(bool, Color)>();
             for(int column = 0; column < 10; column++)
             {
-                EmptyRow.Add((false, Colors.Transparent));
+                emptyRow.Add((false, Colors.Transparent));
             }
-            Occupado.Add(EmptyRow);
+            Occupado.Add(emptyRow);
             Occupado = new ObservableCollection<ObservableCollection<(bool, Color)>>(Occupado.Reverse());
             for(int i= row+1; i<22; i++)
             {
@@ -489,10 +494,16 @@ namespace Tetris_game.ViewModels
             OccupiedCells = Occupado;
         }
 
+
         private async void CheckClearRows()
         {
-            for(int row = 0; row < 22; row++)
+            bool rowFound = false;
+            List<int> rows = new List<int>();
+            ObservableCollection<ObservableCollection<(bool, Color)>> Occupado = new ObservableCollection<ObservableCollection<(bool, Color)>>();
+            for (int row = 0; row < 22; row++)
             {
+                ObservableCollection<(bool, Color)> newRow = new ObservableCollection<(bool, Color)>();
+
                 bool isFull = true;
 
                 for (int column = 0; column < 10; column++)
@@ -500,16 +511,40 @@ namespace Tetris_game.ViewModels
                     if (!OccupiedCells[row][column].Item1)
                     {
                         isFull = false;
-                        break;         
+                        break;
                     }
                 }
 
                 if (isFull)
                 {
+                    rows.Add(row);
+                    rowFound = true;
+                    for (int column = 0; column < 10; column++)
+                    {
+                        newRow.Add((true, Colors.White));
+                    }
+                }
+                else
+                {
+                    for (int column = 0; column < 10; column++)
+                    {
+                        newRow.Add(OccupiedCells[row][column]);
+                    }
+                }
+                Occupado.Add(newRow);
+            }
+            if (rowFound)
+            {
+                OccupiedCells = Occupado;
+                await Task.Delay(5000);
+                foreach(int row in rows)
+                {
                     ClearRow(row);
                 }
             }
+
         }
+
         private async void StartGame()
         {
             isRunning = true;
@@ -517,7 +552,7 @@ namespace Tetris_game.ViewModels
             NextBlock = blockQueue.NextBlock;
             while (isRunning)
             {
-                await Task.Delay(400);
+                await Task.Delay(200);
                 MoveDown();
             }
         }
