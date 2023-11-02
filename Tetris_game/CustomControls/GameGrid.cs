@@ -74,7 +74,6 @@ namespace Tetris_game.CustomControls
                     var rectangle = this[row, col];
                     if (OccupiedCells[row][col].Item1)
                     {
-
                         if (rectangle != null)
                         {
                             this.Children.Remove(rectangle);

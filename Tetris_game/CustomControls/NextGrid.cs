@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -75,6 +76,10 @@ namespace Tetris_game.CustomControls
 
                     this.Children.Add(cell);
                 }
+            }
+            else
+            {
+                this.Children.Clear();
             }
         }
         public Block NextBlock

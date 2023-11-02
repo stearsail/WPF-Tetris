@@ -78,6 +78,10 @@ namespace Tetris_game.CustomControls
                     this.Children.Add(cell);
                 }
             }
+            else
+            {
+                this.Children.Clear();
+            }
         }
         public Block HeldBlock
         {

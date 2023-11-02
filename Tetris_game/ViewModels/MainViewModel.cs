@@ -22,8 +22,10 @@ namespace Tetris_game.ViewModels
         private ObservableCollection<ObservableCollection<(bool, Color)>> occupiedCells;
         private bool isRunning = false;
         private bool canHoldBlock = true;
+        private int score = 0;
 
-        private ICommand startGameCommand;
+        private ICommand toggleGameCommand;
+        private ICommand resetGameCommand;
         private ICommand moveDownCommand;
         private ICommand moveRightCommand;
         private ICommand moveLeftCommand;
@@ -31,6 +33,26 @@ namespace Tetris_game.ViewModels
         private ICommand rotateCCWCommmand;
         private ICommand holdBlockCommand;
        
+        public int Score
+        {
+            get => score;
+            set
+            {
+                score = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool IsRunning
+        {
+            get => isRunning;
+            set
+            {
+                isRunning = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ObservableCollection<ObservableCollection<(bool, Color)>> OccupiedCells
         {
             get=>occupiedCells;
@@ -70,18 +92,31 @@ namespace Tetris_game.ViewModels
             }
         }
 
-        public ICommand StartGameCommand
+        public ICommand ToggleGameCommand
         {
             get
             {
-                if (startGameCommand == null)
+                if (toggleGameCommand == null)
                 {
-                    startGameCommand = new RelayCommand(_ => StartGame(), _=>!isRunning);
+                    toggleGameCommand = new RelayCommand(_ => ToggleGame());
                 }
-                return startGameCommand;
+                return toggleGameCommand;
             }
             
         }
+
+        public ICommand ResetGameCommand
+        {
+            get
+            {
+                if(resetGameCommand == null)
+                {
+                    resetGameCommand = new RelayCommand(_ => ResetGame());
+                }
+                return resetGameCommand;
+            }
+        }
+
         public ICommand MoveDownCommand
         {
             get
@@ -505,21 +540,49 @@ namespace Tetris_game.ViewModels
                 }
 
                 if (isFull)
-                {
                     ClearRow(row);
+            }
+        }
+        private async void ToggleGame()
+        {
+            IsRunning = !IsRunning;
+            if (isRunning)
+            {
+                ActiveBlock = blockQueue.CurrentBlock;
+                NextBlock = blockQueue.NextBlock;
+                while (isRunning)
+                {
+                    MoveDown();
+                    await Task.Delay(400);
                 }
             }
         }
-        private async void StartGame()
+        
+        private void ResetGame()
         {
-            isRunning = true;
-            ActiveBlock = blockQueue.CurrentBlock;
-            NextBlock = blockQueue.NextBlock;
-            while (isRunning)
+            IsRunning = false;
+            ObservableCollection<ObservableCollection<(bool, Color)>> Occupado = new ObservableCollection<ObservableCollection<(bool, Color)>>();
+
+            for (int row = 0; row < 22; row++)
             {
-                await Task.Delay(400);
-                MoveDown();
+                var rowCollection = new ObservableCollection<(bool, Color)>();
+                for (int col = 0; col < 10; col++)
+                {
+                    rowCollection.Add((false, Colors.Transparent));
+                }
+                Occupado.Add(rowCollection);
             }
+            OccupiedCells = Occupado;
+            ActiveBlock = null;
+            NextBlock = null;
+            HeldBlock = null;
+            Score = 0;
+
+        }
+
+        private void PauseGame()
+        {
+            isRunning = !isRunning;
         }
 
         private void InitiliazeOccupiedCells()
@@ -540,7 +603,6 @@ namespace Tetris_game.ViewModels
         public MainViewModel()
         {
             InitiliazeOccupiedCells();
-
         }
     }
 }

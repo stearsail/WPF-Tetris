@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:Tetris_game"
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
-         
+        <FontFamily x:Key="SurrendereFont">pack://application:,,,/Fonts/Surrendere.ttf#Surrendere</FontFamily>
     </Application.Resources>
 </Application>
