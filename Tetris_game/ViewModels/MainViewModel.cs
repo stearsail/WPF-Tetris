@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Documents;
@@ -23,6 +24,11 @@ namespace Tetris_game.ViewModels
         private bool isRunning = false;
         private bool canHoldBlock = true;
         private int score = 0;
+        private int levelMultiplier = 1;
+        private int rowsCleared = 0;
+        private const int rowsForLevelUp = 10;
+        private int totalRowsCleared = 0;
+        private int speed = 700;
 
         private ICommand toggleGameCommand;
         private ICommand resetGameCommand;
@@ -39,6 +45,16 @@ namespace Tetris_game.ViewModels
             set
             {
                 score = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public int LevelMultiplier
+        {
+            get => levelMultiplier;
+            set
+            {
+                levelMultiplier = value;
                 OnPropertyChanged();
             }
         }
@@ -487,6 +503,7 @@ namespace Tetris_game.ViewModels
 
         private void PlaceBlock()
         {
+            rowsCleared = 0;
             foreach(Position position in ActiveBlock.PossiblePositions[ActiveBlock.CurrentPosition])
             {
                 
@@ -540,9 +557,53 @@ namespace Tetris_game.ViewModels
                 }
 
                 if (isFull)
+                {
+                    totalRowsCleared++;
+                    rowsCleared++;
                     ClearRow(row);
+                }
             }
+            CalculateScore(rowsCleared);
         }
+
+        private void CalculateScore(int rowsCleared)
+        {
+            Score += 10 * LevelMultiplier;
+
+            if (totalRowsCleared / rowsForLevelUp >= 1)
+            {
+                totalRowsCleared = totalRowsCleared - rowsForLevelUp;
+                if(LevelMultiplier < 10)
+                    LevelMultiplier++;
+                if (LevelMultiplier <= 10)
+                {
+                    speed -= 70;
+                }
+            }
+
+            int points = 0;
+
+            switch (rowsCleared)
+            {
+                case 1:
+                    points = 40;
+                    break;
+                case 2:
+                    points = 100;
+                    break;
+                case 3:
+                    points = 300;
+                    break;
+                case 4:
+                    points = 1200;
+                    break;
+            }
+
+            Score += points * LevelMultiplier;
+
+            rowsCleared = 0;
+        }
+
         private async void ToggleGame()
         {
             IsRunning = !IsRunning;
@@ -553,7 +614,7 @@ namespace Tetris_game.ViewModels
                 while (isRunning)
                 {
                     MoveDown();
-                    await Task.Delay(400);
+                    await Task.Delay(speed);
                 }
             }
         }
