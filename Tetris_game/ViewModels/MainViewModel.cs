@@ -2,15 +2,19 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Documents;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using System.Windows.Threading;
 using Tetris_game.Models;
+using Tetris_game.Views;
 
 namespace Tetris_game.ViewModels
 {
@@ -22,13 +26,18 @@ namespace Tetris_game.ViewModels
         private BlockQueue blockQueue = new BlockQueue();
         private ObservableCollection<ObservableCollection<(bool, Color)>> occupiedCells;
         private bool isRunning = false;
+        private bool isGameOver = false;
         private bool canHoldBlock = true;
         private int score = 0;
+        private int achievedScore = 0;
         private int levelMultiplier = 1;
         private int rowsCleared = 0;
-        private const int rowsForLevelUp = 10;
+        private const int rowsForLevelUp = 3;
         private int totalRowsCleared = 0;
         private int speed = 700;
+        private string playerName = "";
+        private ObservableCollection<Player> playerList = new ObservableCollection<Player>();
+        private ObservableCollection<Player> topPlayers = new ObservableCollection<Player>();
 
         private ICommand toggleGameCommand;
         private ICommand resetGameCommand;
@@ -38,13 +47,42 @@ namespace Tetris_game.ViewModels
         private ICommand rotateCWCommand;
         private ICommand rotateCCWCommmand;
         private ICommand holdBlockCommand;
-       
+        private ICommand hardDropCommand;
+        private ICommand savePlayerScoreCommand;
+        private ICommand showLeaderboardCommand;
+
+        public MainViewModel()
+        {
+            InitiliazeOccupiedCells();
+            InitializeLeaderboard();
+        }
+
+        public string PlayerName
+        {
+            get => playerName;
+            set
+            {
+                playerName = value.ToUpper();
+                OnPropertyChanged();
+            }
+        }
+
         public int Score
         {
             get => score;
             set
             {
                 score = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public int AchievedScore
+        {
+            get => achievedScore;
+            set
+            {
+                achievedScore = value;
                 OnPropertyChanged();
             }
         }
@@ -69,6 +107,16 @@ namespace Tetris_game.ViewModels
             }
         }
 
+        public bool IsGameOver
+        {
+            get => isGameOver;
+            set
+            {
+                isGameOver = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ObservableCollection<ObservableCollection<(bool, Color)>> OccupiedCells
         {
             get=>occupiedCells;
@@ -78,6 +126,26 @@ namespace Tetris_game.ViewModels
                 OnPropertyChanged();
             }
         }
+        public ObservableCollection<Player> PlayerList
+        {
+            get=>playerList;
+            set
+            {
+                playerList = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ObservableCollection<Player> TopPlayers
+        {
+            get => topPlayers;
+            set
+            {
+                topPlayers = value;
+                OnPropertyChanged();
+            }
+        }
+
         public Models.Block ActiveBlock
         {
             get => activeBlock;
@@ -114,7 +182,7 @@ namespace Tetris_game.ViewModels
             {
                 if (toggleGameCommand == null)
                 {
-                    toggleGameCommand = new RelayCommand(_ => ToggleGame());
+                    toggleGameCommand = new RelayCommand(_ => ToggleGame(), _=>!IsGameOver);
                 }
                 return toggleGameCommand;
             }
@@ -178,7 +246,7 @@ namespace Tetris_game.ViewModels
             {
                 if (rotateCWCommand == null)
                 {
-                    rotateCWCommand = new RelayCommand(_ => RotateCW(), _ => isRunning);
+                    rotateCWCommand = new RelayCommand(_ => RotateCW(), _ => isRunning && !IsGameOver);
                 }
                 return rotateCWCommand;
             }
@@ -191,7 +259,7 @@ namespace Tetris_game.ViewModels
             {
                 if (rotateCCWCommmand == null)
                 {
-                    rotateCCWCommmand = new RelayCommand(_ => RotateCCW(), _ => isRunning);
+                    rotateCCWCommmand = new RelayCommand(_ => RotateCCW(), _ => isRunning && !IsGameOver);
                 }
                 return rotateCCWCommmand;
             }
@@ -203,12 +271,50 @@ namespace Tetris_game.ViewModels
             {
                 if(holdBlockCommand == null)
                 {
-                    holdBlockCommand = new RelayCommand(_ => HoldBlock(), _ => isRunning);
+                    holdBlockCommand = new RelayCommand(_ => HoldBlock(), _ => isRunning && canHoldBlock);
                 }
                 return holdBlockCommand;
             }
             
+        }             
+        
+        public ICommand HardDropCommand
+        {
+            get
+            {
+                if(hardDropCommand == null)
+                {
+                    hardDropCommand = new RelayCommand(_ => HardDrop(), _ => isRunning);
+                }
+                return hardDropCommand;
+            }
+            
         }        
+        
+        public ICommand SavePlayerScoreCommand
+        {
+            get
+            {
+                if(savePlayerScoreCommand == null)
+                {
+                    savePlayerScoreCommand = new RelayCommand(_ => SavePlayerScore(), _=>PlayerName.Length==3);
+                }
+                return savePlayerScoreCommand;
+            }
+            
+        }        
+        
+        public ICommand ShowLeaderboardCommand
+        {
+            get
+            {
+                if(showLeaderboardCommand == null)
+                {
+                    showLeaderboardCommand = new RelayCommand(_ => OpenLeaderboard(), _ => !isRunning);
+                }
+                return showLeaderboardCommand;
+            }
+        }
 
         private bool BlockFits(int row, int col) 
         {
@@ -238,8 +344,20 @@ namespace Tetris_game.ViewModels
             ActiveBlock.PreviousPosition = positions;
         }
 
+
+        private void HardDrop()
+        {
+            while (BlockFits(1, 0))
+            {
+                SavePreviousPosition();
+                ActiveBlock.Offset.Row += 1;
+            }
+            PlaceBlock();
+        }
+
         private void MoveDown()
         {
+
             if (BlockFits(1,0))
             {
                 SavePreviousPosition();
@@ -273,10 +391,6 @@ namespace Tetris_game.ViewModels
             {
                 TryFitRotation(true);
                 return;
-            }
-            else
-            {
-                
             }
             SavePreviousPosition();
             ActiveBlock.CurrentPosition = GetRotationIndex(true);
@@ -481,6 +595,7 @@ namespace Tetris_game.ViewModels
 
         private void HoldBlock()
         {
+            canHoldBlock = false;
             Models.Block newBlock = null;
             SavePreviousPosition();
             if (HeldBlock == null)
@@ -503,16 +618,24 @@ namespace Tetris_game.ViewModels
 
         private void PlaceBlock()
         {
+            canHoldBlock = true;
             rowsCleared = 0;
             foreach(Position position in ActiveBlock.PossiblePositions[ActiveBlock.CurrentPosition])
             {
                 
                 OccupiedCells[position.Row + ActiveBlock.Offset.Row][position.Column + ActiveBlock.Offset.Column] = (true,ActiveBlock.Color.Color);
             }
-            ActiveBlock = blockQueue.GenerateBlock();
+            Block newBlock = blockQueue.GenerateBlock();
+            if (CheckGameOver(newBlock))
+            {
+                GameOver();
+                return;
+            }
+            ActiveBlock = newBlock;
             NextBlock = blockQueue.NextBlock;
             CheckClearRows();
         }
+
 
         private void ClearRow(int row)
         {
@@ -621,7 +744,15 @@ namespace Tetris_game.ViewModels
         
         private void ResetGame()
         {
+            IsGameOver = false;
             IsRunning = false;
+            SavePreviousPosition();
+            ActiveBlock.ResetPositions();
+            ActiveBlock = null;
+            NextBlock = null;
+            HeldBlock = null;
+            Score = 0;
+            PlayerName = "";
             ObservableCollection<ObservableCollection<(bool, Color)>> Occupado = new ObservableCollection<ObservableCollection<(bool, Color)>>();
 
             for (int row = 0; row < 22; row++)
@@ -634,16 +765,25 @@ namespace Tetris_game.ViewModels
                 Occupado.Add(rowCollection);
             }
             OccupiedCells = Occupado;
-            ActiveBlock = null;
-            NextBlock = null;
-            HeldBlock = null;
-            Score = 0;
-
+            blockQueue = new BlockQueue();
         }
 
-        private void PauseGame()
+        private void GameOver()
         {
-            isRunning = !isRunning;
+            isRunning = false;
+            IsGameOver = true;
+            ((RelayCommand)RotateCCWCommand).RaiseCanExecuteChanged();
+        }
+
+        private bool CheckGameOver(Block newBlock)
+        {
+            foreach (Position tile in newBlock.PossiblePositions[newBlock.CurrentPosition])
+            {
+                if (OccupiedCells[tile.Row][tile.Column + 3].Item1)
+                    return true;
+            }
+
+            return false;
         }
 
         private void InitiliazeOccupiedCells()
@@ -661,9 +801,75 @@ namespace Tetris_game.ViewModels
             }
         }
 
-        public MainViewModel()
+        private void InitializeLeaderboard()
         {
-            InitiliazeOccupiedCells();
+            string fileName = "PlayerScores.txt";
+
+            if (File.Exists(fileName))
+            {
+                // Store each line in array of strings 
+                string[] lines = File.ReadAllLines(fileName);
+
+                foreach (string ln in lines)
+                {
+                    PlayerList.Add(new Player(ln.Split(",")[0], Convert.ToInt32(ln.Split(",")[1])));
+                }
+
+                OrderPlayerList();
+            }
+            else
+            {
+                File.Create(fileName);
+            }
+        }
+
+        private void SavePlayerScore()
+        {
+            Player player = PlayerList.FirstOrDefault(x => x.Name == PlayerName);
+            if (player == null)
+            {
+                Player newPlayer = new Player(PlayerName, Score);
+                PlayerList.Add(newPlayer);
+            }
+            else
+                player.Score = Score;
+
+            OrderPlayerList();
+            WritePlayersToFile();
+            ResetGame();
+        }
+
+
+        private void OrderPlayerList()
+        {
+            PlayerList = new ObservableCollection<Player>(PlayerList.OrderByDescending(x => x.Score));
+            int count = 0;
+            foreach(Player player in PlayerList)
+            {
+                player.Rank = ++count;
+            }
+            TopPlayers = new ObservableCollection<Player>(PlayerList.Take(3));
+        }
+
+        private void WritePlayersToFile()
+        {
+            using (StreamWriter writer = new StreamWriter("PlayerScores.txt"))
+            {
+                foreach (Player player in playerList)
+                {
+                    string playerData = $"{player.Name},{player.Score}";
+
+                    writer.WriteLine(playerData);
+                }
+            }
+        }
+
+        private void OpenLeaderboard()
+        {
+            var leaderboard = new Leaderboard();
+            leaderboard.DataContext = this;
+            leaderboard.ShowDialog();
+            
         }
     }
 }

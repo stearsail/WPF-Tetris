@@ -184,29 +184,31 @@ namespace Tetris_game.CustomControls
                     
                 }
 
-                previewBlocks = new List<Rectangle>();
-                foreach (Position tile in activeBlock.PossiblePositions[activeBlock.CurrentPosition])
+                if (previewOffset > 0)
                 {
-                    SolidColorBrush solidColorBrush = activeBlock.Color;
-                    if (solidColorBrush != null)
+                    previewBlocks = new List<Rectangle>();
+                    foreach (Position tile in activeBlock.PossiblePositions[activeBlock.CurrentPosition])
                     {
-                        Color color = solidColorBrush.Color;
-                        byte r = color.R;
-                        byte g = color.G;
-                        byte b = color.B;
-                        var previewCell = new Rectangle
+                        SolidColorBrush solidColorBrush = activeBlock.Color;
+                        if (solidColorBrush != null)
                         {
-                            Stroke = Brushes.White,
-                            StrokeThickness = 3,
-                        };
-                        previewBlocks.Add(previewCell);
-                        Grid.SetZIndex(previewCell, -1);
-                        Grid.SetRow(previewCell, tile.Row + activeBlock.Offset.Row + previewOffset);
-                        Grid.SetColumn(previewCell, tile.Column + activeBlock.Offset.Column);
-                        this.Children.Add(previewCell);
+                            Color color = solidColorBrush.Color;
+                            byte r = color.R;
+                            byte g = color.G;
+                            byte b = color.B;
+                            var previewCell = new Rectangle
+                            {
+                                Stroke = Brushes.White,
+                                StrokeThickness = 3,
+                            };
+                            previewBlocks.Add(previewCell);
+                            Grid.SetZIndex(previewCell, -1);
+                            Grid.SetRow(previewCell, tile.Row + activeBlock.Offset.Row + previewOffset);
+                            Grid.SetColumn(previewCell, tile.Column + activeBlock.Offset.Column);
+                            this.Children.Add(previewCell);
+                        }
                     }
                 }
-
             }
         }
 

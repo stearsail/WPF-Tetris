@@ -33,5 +33,11 @@ namespace Tetris_game
         {
             this.execute(parameter);
         }
+
+        public void RaiseCanExecuteChanged()
+        {
+            CommandManager.InvalidateRequerySuggested();
+        }
+
     }
 }
